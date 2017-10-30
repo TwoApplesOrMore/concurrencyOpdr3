@@ -2,13 +2,15 @@ import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 
-public class VakagentRouter extends AbstractActor {
+public class VakagentActor extends AbstractActor {
+    private int section;
     private int maxRows;
     private int maxSeats;
     private boolean seats[][];
     private int salesAgents = 1;
 
-    public VakagentRouter(int maxRows, int maxSeats) {
+    public VakagentActor(int section, int maxRows, int maxSeats) {
+        this.section = section;
         this.maxRows = maxRows;
         this.maxSeats = maxSeats;
         // default value of the booleans are false, so this means that when a seat is 'false', that there is nobody occupying it yet
@@ -16,8 +18,8 @@ public class VakagentRouter extends AbstractActor {
     }
 
 
-    public static Props prop(int maxRows, int maxSeats){
-        return Props.create(VakagentRouter.class, maxRows, maxSeats);
+    public static Props prop(int section, int maxRows, int maxSeats){
+        return Props.create(VakagentActor.class, section, maxRows, maxSeats);
     }
 
     @Override
@@ -30,7 +32,7 @@ public class VakagentRouter extends AbstractActor {
         return receiveBuilder()
                 .match(String.class, order -> {
                     if (order.equals("Start")) {
-                        ActorRef VakAgentRouter = getContext().actorOf(Props.create(VerkoopagentActor.class, "Salesagent " + salesAgents));
+                        ActorRef Salesagent = getContext().actorOf(Props.create(VerkoopagentActor.class, "Salesagent " + salesAgents));
                         salesAgents++;
                     }
                 }).build();
