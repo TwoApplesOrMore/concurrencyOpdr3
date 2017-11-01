@@ -1,9 +1,10 @@
-import akka.actor.AbstractActor;
-import akka.actor.Props;
+import akka.actor.*;
 
 public class VerkoopagentActor extends AbstractActor{
 
     private String name;
+    private Object message;
+    private ActorRef actorRef;
 
         public VerkoopagentActor(String name) {
             this.name = name;
@@ -21,10 +22,17 @@ public class VerkoopagentActor extends AbstractActor{
         @Override
         public Receive createReceive() {
             return receiveBuilder()
-                    .match(String.class, order -> {
-                        if (order.equals("Start")) {
-                        }
-                    }).build();
+                    .match(Message.class, msg -> {
+                        System.out.println(msg.getType() + " kaarten:" + msg.getKaarten()+" vak:" + msg.getVak());
+                        getContext().actorSelection("//ziggo-dome/user/vak"+msg.getVak())
+                                .tell(msg, getSender());
+
+                    })
+                    .match(ResponseMessage.class, msg -> {
+                        getContext().actorSelection("//ziggo-dome/user/vak"+msg.getVak())
+                                .tell(msg, getSender());
+                    })
+                    .build();
         }
 
         @Override

@@ -1,5 +1,6 @@
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
+import akka.actor.Identify;
 import akka.actor.Props;
 
 public class VakagentActor extends AbstractActor {
@@ -7,7 +8,7 @@ public class VakagentActor extends AbstractActor {
     private int maxRows;
     private int maxSeats;
     private boolean seats[][];
-    private int salesAgents = 1;
+
 
     public VakagentActor(int section, int maxRows, int maxSeats) {
         this.section = section;
@@ -18,7 +19,7 @@ public class VakagentActor extends AbstractActor {
     }
 
 
-    public static Props prop(int section, int maxRows, int maxSeats){
+    public static Props prop(int section, int maxRows, int maxSeats) {
         return Props.create(VakagentActor.class, section, maxRows, maxSeats);
     }
 
@@ -30,16 +31,60 @@ public class VakagentActor extends AbstractActor {
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                .match(String.class, order -> {
-                    if (order.equals("Start")) {
-                        ActorRef Salesagent = getContext().actorOf(Props.create(VerkoopagentActor.class, "Salesagent " + salesAgents));
-                        salesAgents++;
+                .match(Message.class, order -> {
+                    if (order.getType().equals("Order")) {
+                        getSender().tell(processOrder(order), getSender());
                     }
-                }).build();
+                })
+                .match(ResponseMessage.class, payment -> {
+                        getSender().tell(paymentResponse(payment), getSender());
+                })
+                .build();
     }
 
     @Override
     public void postStop() throws Exception {
         super.postStop();
+    }
+
+    public ResponseMessage processOrder(Message message) {
+        for (int i = 0; i < maxRows; i++) {
+            int seatsRdy = 0;
+
+            for (int j = 0; j < maxSeats; j++) {
+                if (!seats[i][j]) {
+                    seatsRdy++;
+                    if (seatsRdy == message.getKaarten()) {
+                        int[] reservedSeats = new int[seatsRdy];
+                        for (int k = 0; k < seatsRdy; k++) {
+                            seats[i][j - k] = true;
+                            reservedSeats[k] = j - k;
+                        }
+                        return new ResponseMessage("Order accepted", section, i, reservedSeats);
+
+                    }
+                } else {
+                    seatsRdy = 0;
+                }
+            }
+        }
+
+        return new ResponseMessage("Order denied", section, -1, null);
+
+
+    }
+
+    public ResponseMessage paymentResponse(ResponseMessage responseMessage) {
+        if (responseMessage.getType().equals("Pay")) {
+            return new ResponseMessage("Payment accepted", responseMessage.getVak()
+                    , responseMessage.getRij(), responseMessage.getKaarten());
+        } else {
+            for (int i = 0; i < responseMessage.getKaarten().length; i++) {
+                seats[responseMessage.getRij()][responseMessage.getKaarten()[i]] = false;
+            }
+            return new ResponseMessage("Payment denied", responseMessage.getVak()
+                    , responseMessage.getRij(), responseMessage.getKaarten());
+        }
+
     }
 }

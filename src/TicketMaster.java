@@ -1,23 +1,39 @@
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
-import akka.routing.RoundRobinPool;
+import akka.actor.Terminated;
+import akka.routing.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class TicketMaster extends AbstractActor {
 
-    ActorRef router;
+    Router router;
+
 
     {
-        router = getContext().actorOf(new RoundRobinPool(10).props(Props.create(VerkoopagentActor.class, "test")), "router");
+        List<Routee> routees = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            ActorRef r = getContext().actorOf(VerkoopagentActor.prop("SA:"+(i+1)), "SA"+(i+1));
+            getContext().watch(r);
+            routees.add(new ActorRefRoutee(r));
+        }
+        router = new Router(new SmallestMailboxRoutingLogic(), routees);
+
+
     }
 
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                .match(Message.class, message -> {
-                            router.tell(message, getSender());
-                        }
-                ).build();
+                .match(Message.class, msg -> {
+                    router.route(msg, getSender());
+                })
+                .match(ResponseMessage.class, msg ->{
+                    router.route(msg, getSender());
+                })
+                .build();
 
     }
 }
