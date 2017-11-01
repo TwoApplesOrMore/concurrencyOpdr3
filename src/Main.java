@@ -1,5 +1,6 @@
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
+import akka.actor.Props;
 import akka.routing.Router;
 import akka.routing.SmallestMailboxRoutingLogic;
 
@@ -13,16 +14,14 @@ public class Main {
     }
 
     private void run() {
-        ActorSystem system = ActorSystem.create("Ziggo Dome");
+        ActorSystem system = ActorSystem.create("Ziggo_Dome");
+
+        ActorRef master = system.actorOf(Props.create(TicketMaster.class));
 
 
-        for (int i = 0; i < 7; i++) {
-
-            ActorRef SalesAgent = system.actorOf(VerkoopagentActor.prop());
+        for (int i = 0; i < 25; i++) {
+            ActorRef SalesAgent = system.actorOf(VerkoopagentActor.prop("SA:" + (i+1)));
         }
-
-        Router router = new Router(new SmallestMailboxRoutingLogic() );
-
 
         for (int i = 0; i < 7; i++) {
 

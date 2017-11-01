@@ -3,14 +3,14 @@ import akka.actor.Props;
 
 public class VerkoopagentActor extends AbstractActor{
 
-        private int section;
+    private String name;
 
-        public VerkoopagentActor(int section, int maxRows, int maxSeats) {
-            this.section = section;
+        public VerkoopagentActor(String name) {
+            this.name = name;
         }
 
-        public static Props prop(){
-            return Props.create(VakagentActor.class);
+        public static Props prop(String name){
+            return Props.create(VerkoopagentActor.class, name);
         }
 
         @Override
