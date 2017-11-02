@@ -9,12 +9,17 @@ public class VakagentActor extends AbstractActor {
     private int maxSeats;
     private boolean seats[][];
 
-
+    /**
+     * @param section  het vak van de vakAgent
+     * @param maxRows  maximaal aantal rijen
+     * @param maxSeats maximaal aantal zitplaatsen
+     * @value seats[][] standaard waarde van de booleans is false, dus als een boolean true is betekent dat dat die
+     *                  zitplaats gereserveerd is.
+     */
     public VakagentActor(int section, int maxRows, int maxSeats) {
         this.section = section;
         this.maxRows = maxRows;
         this.maxSeats = maxSeats;
-        // default value of the booleans are false, so this means that when a seat is 'false', that there is nobody occupying it yet
         this.seats = new boolean[maxRows][maxSeats];
     }
 
@@ -28,16 +33,18 @@ public class VakagentActor extends AbstractActor {
         super.preStart();
     }
 
+    /**
+     * roept corresponderende functies aan bij het ontvangen van een bericht
+     * @return receiveBuilder()
+     */
     @Override
     public Receive createReceive() {
         return receiveBuilder()
                 .match(Message.class, order -> {
-                    if (order.getType().equals("Order")) {
-                        getSender().tell(processOrder(order), getSender());
-                    }
+                    getSender().tell(processOrder(order), getSender());
                 })
                 .match(ResponseMessage.class, payment -> {
-                        getSender().tell(paymentResponse(payment), getSender());
+                    getSender().tell(paymentResponse(payment), getSender());
                 })
                 .build();
     }
@@ -47,13 +54,21 @@ public class VakagentActor extends AbstractActor {
         super.postStop();
     }
 
+    /**
+     * Een methode voor het verwerken van een reservering
+     * @param message het meegegeven bericht
+     * @return een ResponseMessage om terug te sturen
+     */
     public ResponseMessage processOrder(Message message) {
         for (int i = 0; i < maxRows; i++) {
+            //aantal zitplaatsen die naast elkaar beschikbaar zijn
             int seatsRdy = 0;
 
             for (int j = 0; j < maxSeats; j++) {
                 if (!seats[i][j]) {
                     seatsRdy++;
+                    //als het aantal gewenste kaartjes gelijk is aan beschikbare stoelen wordt een lijst met de kaartjes
+                    //terug gegeven in de message
                     if (seatsRdy == message.getKaarten()) {
                         int[] reservedSeats = new int[seatsRdy];
                         for (int k = 0; k < seatsRdy; k++) {
@@ -68,13 +83,20 @@ public class VakagentActor extends AbstractActor {
                 }
             }
         }
-
+        // als er niet genoeg plaatsen meer over zijn in het vak
         return new ResponseMessage("Order denied", section, -1, null);
 
 
     }
 
+    /**
+     * Een methode voor het verwerken van een betaling
+     * @param responseMessage het meegegeven bericht
+     * @return een ResponseMessage om terug te sturen
+     */
     public ResponseMessage paymentResponse(ResponseMessage responseMessage) {
+        //als er betaald wordt wordt er een Payment accepted response terug gestuurd en anders worden de gereserveerde
+        // zitplaatsen weer vrijgegeven en een bericht terug gestuurd
         if (responseMessage.getType().equals("Pay")) {
             return new ResponseMessage("Payment accepted", responseMessage.getVak()
                     , responseMessage.getRij(), responseMessage.getKaarten());

@@ -3,6 +3,12 @@ public class Message {
     private int vak;
     private int kaarten;
 
+    /**
+     * Een bericht die meegegeven wordt als er kaartjes besteld gaan worden
+     * @param type het type bericht
+     * @param vak het gewenste vak
+     * @param kaarten het aantal kaartjes die besteld worden
+     */
     public Message(String type, int vak, int kaarten) {
         this.type = type;
         this.vak = vak;
