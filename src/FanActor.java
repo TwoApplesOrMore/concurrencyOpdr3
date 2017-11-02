@@ -6,6 +6,11 @@ import akka.actor.Props;
 import java.util.Arrays;
 import java.util.Random;
 
+/**
+ * @Author Tim Scholten & Harry van Gastel
+ *
+ * De fanactor is de actor die kaartjes wilt bestellen en kopen door berichten naar de router actor te sturen
+ */
 public class FanActor extends AbstractActor {
 
 
@@ -23,14 +28,18 @@ public class FanActor extends AbstractActor {
         return Props.create(FanActor.class, name, master);
     }
 
-
+    /**
+     * Hier worden het vak en het aantal tickets dat besteld wordt random geset
+     * Ook wordt het basis bericht gegenereerd.
+     *
+     * @throws Exception
+     */
     @Override
     public void preStart() throws Exception {
         int amountOfTickets = RNG.nextInt(4) + 1;
         int section = RNG.nextInt(7) + 1;
         this.message = new Message("Order", section, amountOfTickets);
     }
-
 
     @Override
     public Receive createReceive() {
@@ -41,22 +50,24 @@ public class FanActor extends AbstractActor {
                     }
                 })
                 .match(ResponseMessage.class, message -> {
-                    switch (message.getType()){
+                    switch (message.getType()) {
+                        //Als de order wordt geaccepteerd wordt er een response gestuurd naar de router actor dat hij betaald
                         case "Order accepted":
                             ResponseMessage responseMessage = new ResponseMessage("Pay", message.getVak()
                                     , message.getRij(), message.getKaarten());
                             master.tell(responseMessage, getSelf());
                             break;
+                        //in alle andere gevallen moet er allen wat geprint worden en vervolgens de actor gekillt worden
                         case "Order denied":
-                            System.out.println(name+" Vak:"+message.getVak()+" vol");
+                            System.out.println(name + " Vak:" + message.getVak() + " vol");
                             getSelf().tell(PoisonPill.getInstance(), ActorRef.noSender());
                             break;
                         case "Payment accepted":
-                            System.out.println(name+" Kaartjes ontvangen vak:"+message.getVak()+" rij:"+ message.getRij()+" plaatsen:"+ Arrays.toString(message.getKaarten()));
+                            System.out.println(name + " Kaartjes ontvangen vak:" + message.getVak() + " rij:" + message.getRij() + " plaatsen:" + Arrays.toString(message.getKaarten()));
                             getSelf().tell(PoisonPill.getInstance(), ActorRef.noSender());
                             break;
                         case "Payment denied":
-                            System.out.println(name+" Er is niet betaald");
+                            System.out.println(name + " Er is niet betaald");
                             getSelf().tell(PoisonPill.getInstance(), ActorRef.noSender());
                     }
                 })

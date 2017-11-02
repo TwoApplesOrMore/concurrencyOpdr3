@@ -1,17 +1,13 @@
 import akka.actor.*;
 
+/**
+ * @Author Tim Scholten en Harry van Gastel
+ * Een verkoopagent krijgt berichten
+ */
 public class VerkoopagentActor extends AbstractActor{
 
-    private String name;
-    private Object message;
-    private ActorRef actorRef;
-
-        public VerkoopagentActor(String name) {
-            this.name = name;
-        }
-
-        public static Props prop(String name){
-            return Props.create(VerkoopagentActor.class, name);
+        public static Props prop(){
+            return Props.create(VerkoopagentActor.class);
         }
 
         @Override
@@ -23,12 +19,13 @@ public class VerkoopagentActor extends AbstractActor{
         public Receive createReceive() {
             return receiveBuilder()
                     .match(Message.class, msg -> {
-                        System.out.println(msg.getType() + " kaarten:" + msg.getKaarten()+" vak:" + msg.getVak());
+                        //hier wordt gezocht naar de geschikte vakAgentActor om vervolgens het bericht door te sturen
                         getContext().actorSelection("//ziggo-dome/user/vak"+msg.getVak())
                                 .tell(msg, getSender());
 
                     })
                     .match(ResponseMessage.class, msg -> {
+                        //hier wordt gezocht naar de geschikte vakAgentActor om vervolgens het bericht door te sturen
                         getContext().actorSelection("//ziggo-dome/user/vak"+msg.getVak())
                                 .tell(msg, getSender());
                     })

@@ -5,7 +5,10 @@ import akka.routing.Router;
 import akka.routing.SmallestMailboxRoutingLogic;
 
 /**
- * @Author Harry van Gastel
+ * @Author Tim Scholten & Harry van Gastel
+ *
+ * Hier wordt het systeem, de routerActor en alle actoren aangemaakt, door bij het maken van de FanActors een bericht
+ * mee te geven met start, beginnen ze met een bericht te sturen naar de TicketMaster.
  */
 
 public class Main {
@@ -20,10 +23,10 @@ public class Main {
 
         for (int i = 0; i < 7; i++) {
 
-            ActorRef vakAgent = system.actorOf(VakagentActor.prop((i+1),10,10), "vak"+(i+1));
+            ActorRef vakAgent = system.actorOf(VakagentActor.prop((i+1),10,30), "vak"+(i+1));
         }
 
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 7000; i++) {
             ActorRef fan = system.actorOf(FanActor.prop("Fan:"+(i+1), master), "fan"+(i+1));
             fan.tell("Start", ActorRef.noSender());
         }
