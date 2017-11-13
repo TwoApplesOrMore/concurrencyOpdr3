@@ -1,13 +1,15 @@
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
-import akka.actor.Identify;
 import akka.actor.Props;
+import messages.*;
+
+import java.util.Arrays;
 
 public class VakagentActor extends AbstractActor {
     private int section;
     private int maxRows;
     private int maxSeats;
-    private boolean seats[][];
+    private ActorRef seats[][];
 
     /**
      * @param section  het vak van de vakAgent
@@ -20,7 +22,7 @@ public class VakagentActor extends AbstractActor {
         this.section = section;
         this.maxRows = maxRows;
         this.maxSeats = maxSeats;
-        this.seats = new boolean[maxRows][maxSeats];
+        this.seats = new ActorRef[maxRows][maxSeats];
     }
 
 
@@ -40,11 +42,11 @@ public class VakagentActor extends AbstractActor {
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                .match(Message.class, order -> {
-                    getSender().tell(processOrder(order), getSender());
+                .match(OrderMessage.class, order -> {
+                    getSender().tell(processOrder(order), order.getFan());
                 })
-                .match(ResponseMessage.class, payment -> {
-                    getSender().tell(paymentResponse(payment), getSender());
+                .match(PaymentMessage.class, payment -> {
+                    getSender().tell(paymentResponse(payment), payment.getActorRef());
                 })
                 .build();
     }
@@ -56,26 +58,26 @@ public class VakagentActor extends AbstractActor {
 
     /**
      * Een methode voor het verwerken van een reservering
-     * @param message het meegegeven bericht
-     * @return een ResponseMessage om terug te sturen
+     * @param orderMessage het meegegeven bericht
+     * @return een messages.OrderResponse om terug te sturen
      */
-    public ResponseMessage processOrder(Message message) {
+    private Object processOrder(OrderMessage orderMessage) {
         for (int i = 0; i < maxRows; i++) {
             //aantal zitplaatsen die naast elkaar beschikbaar zijn
             int seatsRdy = 0;
 
             for (int j = 0; j < maxSeats; j++) {
-                if (!seats[i][j]) {
+                if (seats[i][j] == null) {
                     seatsRdy++;
                     //als het aantal gewenste kaartjes gelijk is aan beschikbare stoelen wordt een lijst met de kaartjes
-                    //terug gegeven in de message
-                    if (seatsRdy == message.getKaarten()) {
+                    //terug gegeven in de orderMessage
+                    if (seatsRdy == orderMessage.getKaarten()) {
                         int[] reservedSeats = new int[seatsRdy];
                         for (int k = 0; k < seatsRdy; k++) {
-                            seats[i][j - k] = true;
+                            seats[i][j - k] = orderMessage.getFan();
                             reservedSeats[k] = j - k;
                         }
-                        return new ResponseMessage("Order accepted", section, i, reservedSeats);
+                        return new OrderResponse("Order complete. vak:"+ section+" Seats:"+ Arrays.toString(reservedSeats));
 
                     }
                 } else {
@@ -84,28 +86,28 @@ public class VakagentActor extends AbstractActor {
             }
         }
         // als er niet genoeg plaatsen meer over zijn in het vak
-        return new ResponseMessage("Order denied", section, -1, null);
-
-
+        return new NoticeMessage("Niet genoeg plaatsen in vak "+orderMessage.getVak());
     }
 
     /**
      * Een methode voor het verwerken van een betaling
-     * @param responseMessage het meegegeven bericht
-     * @return een ResponseMessage om terug te sturen
+     * @param paymentMessage het meegegeven bericht
+     * @return een messages.OrderResponse om terug te sturen
      */
-    public ResponseMessage paymentResponse(ResponseMessage responseMessage) {
+    private Object paymentResponse(PaymentMessage paymentMessage) {
         //als er betaald wordt wordt er een Payment accepted response terug gestuurd en anders worden de gereserveerde
         // zitplaatsen weer vrijgegeven en een bericht terug gestuurd
-        if (responseMessage.getType().equals("Pay")) {
-            return new ResponseMessage("Payment accepted", responseMessage.getVak()
-                    , responseMessage.getRij(), responseMessage.getKaarten());
+        if (paymentMessage.isPayed()) {
+            return new PaymentResponse("Payment accepted");
         } else {
-            for (int i = 0; i < responseMessage.getKaarten().length; i++) {
-                seats[responseMessage.getRij()][responseMessage.getKaarten()[i]] = false;
+            for (int i = 0; i < 10; i++) {
+                for (int j = 0; j < 30; j++) {
+                    if(seats[i][j] == paymentMessage.getActorRef()){
+                        seats[i][j] = null;
+                    }
+                }
             }
-            return new ResponseMessage("Payment denied", responseMessage.getVak()
-                    , responseMessage.getRij(), responseMessage.getKaarten());
+            return new NoticeMessage("Payment not completed");
         }
 
     }

@@ -2,8 +2,8 @@ import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.PoisonPill;
 import akka.actor.Props;
+import messages.*;
 
-import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -15,9 +15,10 @@ public class FanActor extends AbstractActor {
 
 
     private Random RNG = new Random();
-    private Message message;
+    private OrderMessage orderMessage;
     private String name;
     private ActorRef master;
+    private int section;
 
     public FanActor(String name, ActorRef master) {
         this.name = name;
@@ -29,7 +30,7 @@ public class FanActor extends AbstractActor {
     }
 
     /**
-     * Hier worden het vak en het aantal tickets dat besteld wordt random geset
+     * Hier worden het vak en het aantal tickets dat besteld wordt random gemaakt
      * Ook wordt het basis bericht gegenereerd.
      *
      * @throws Exception
@@ -38,7 +39,8 @@ public class FanActor extends AbstractActor {
     public void preStart() throws Exception {
         int amountOfTickets = RNG.nextInt(4) + 1;
         int section = RNG.nextInt(7) + 1;
-        this.message = new Message("Order", section, amountOfTickets);
+        this.section = section;
+        this.orderMessage = new OrderMessage(section, amountOfTickets, getSelf());
     }
 
     @Override
@@ -46,30 +48,20 @@ public class FanActor extends AbstractActor {
         return receiveBuilder()
                 .match(String.class, msg -> {
                     if (msg.equals("Start")) {
-                        master.tell(message, getSelf());
+                        master.tell(orderMessage, getSelf());
                     }
                 })
-                .match(ResponseMessage.class, message -> {
-                    switch (message.getType()) {
-                        //Als de order wordt geaccepteerd wordt er een response gestuurd naar de router actor dat hij betaald
-                        case "Order accepted":
-                            ResponseMessage responseMessage = new ResponseMessage("Pay", message.getVak()
-                                    , message.getRij(), message.getKaarten());
-                            master.tell(responseMessage, getSelf());
-                            break;
-                        //in alle andere gevallen moet er allen wat geprint worden en vervolgens de actor gekillt worden
-                        case "Order denied":
-                            System.out.println(name + " Vak:" + message.getVak() + " vol");
-                            getSelf().tell(PoisonPill.getInstance(), ActorRef.noSender());
-                            break;
-                        case "Payment accepted":
-                            System.out.println(name + " Kaartjes ontvangen vak:" + message.getVak() + " rij:" + message.getRij() + " plaatsen:" + Arrays.toString(message.getKaarten()));
-                            getSelf().tell(PoisonPill.getInstance(), ActorRef.noSender());
-                            break;
-                        case "Payment denied":
-                            System.out.println(name + " Er is niet betaald");
-                            getSelf().tell(PoisonPill.getInstance(), ActorRef.noSender());
-                    }
+                .match(OrderResponse.class, msg -> {
+                    System.out.println(name + " " + msg.getMessage());
+                    master.tell(new PaymentMessage(true ,getSelf(), section), getSelf());
+                })
+                .match(PaymentResponse.class, msg ->{
+                    System.out.println(name + " Tickets recieved: "+msg.getSeats());
+                    getSelf().tell(PoisonPill.class, ActorRef.noSender());
+                })
+                .match(NoticeMessage.class, msg ->{
+                    System.out.println(name + " " + msg.getMessage());
+                    getSelf().tell(PoisonPill.class, ActorRef.noSender());
                 })
                 .build();
     }

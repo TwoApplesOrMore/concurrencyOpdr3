@@ -21,12 +21,7 @@ public class Main {
 
         ActorRef master = system.actorOf(Props.create(TicketMaster.class), "master");
 
-        for (int i = 0; i < 7; i++) {
-
-            ActorRef vakAgent = system.actorOf(VakagentActor.prop((i+1),10,30), "vak"+(i+1));
-        }
-
-        for (int i = 0; i < 7000; i++) {
+        for (int i = 0; i < 700; i++) {
             ActorRef fan = system.actorOf(FanActor.prop("Fan:"+(i+1), master), "fan"+(i+1));
             fan.tell("Start", ActorRef.noSender());
         }
